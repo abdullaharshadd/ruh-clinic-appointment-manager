@@ -1,0 +1,825 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Wellness Platform API",
+    "description": "API documentation for the Wellness Platform - a healthcare clinic management system that integrates with external APIs to manage clients and appointments.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Wellness Platform Team",
+      "email": "omar@ruhcare.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Development server"
+    },
+    {
+      "url": "https://your-production-domain.com/api",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Health check endpoints"
+    },
+    {
+      "name": "Clients",
+      "description": "Client management operations"
+    },
+    {
+      "name": "Appointments",
+      "description": "Appointment management operations"
+    },
+    {
+      "name": "Sync",
+      "description": "Data synchronization with external API"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check endpoint",
+        "description": "Returns the current health status of the API server",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2025-07-20T10:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients": {
+      "get": {
+        "tags": ["Clients"],
+        "summary": "Get all clients",
+        "description": "Retrieve a list of all clients, with optional search functionality",
+        "operationId": "getClients",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search term to filter clients by name, email, or phone",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "john"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of clients retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients/{id}": {
+      "get": {
+        "tags": ["Clients"],
+        "summary": "Get client by ID",
+        "description": "Retrieve a specific client by their unique identifier",
+        "operationId": "getClientById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique client identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "client-123"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Client retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Client not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/appointments": {
+      "get": {
+        "tags": ["Appointments"],
+        "summary": "Get all appointments",
+        "description": "Retrieve a list of all appointments with client information",
+        "operationId": "getAppointments",
+        "responses": {
+          "200": {
+            "description": "List of appointments retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Appointments"],
+        "summary": "Create new appointment",
+        "description": "Create a new appointment for a client",
+        "operationId": "createAppointment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppointmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Appointment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - validation errors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Client not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/appointments/upcoming": {
+      "get": {
+        "tags": ["Appointments"],
+        "summary": "Get upcoming appointments",
+        "description": "Retrieve only upcoming scheduled appointments",
+        "operationId": "getUpcomingAppointments",
+        "responses": {
+          "200": {
+            "description": "List of upcoming appointments retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/appointments/{id}": {
+      "get": {
+        "tags": ["Appointments"],
+        "summary": "Get appointment by ID",
+        "description": "Retrieve a specific appointment by its unique identifier",
+        "operationId": "getAppointmentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique appointment identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "apt-123"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Appointment retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Appointment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Appointments"],
+        "summary": "Update appointment",
+        "description": "Update an existing appointment",
+        "operationId": "updateAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique appointment identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "apt-123"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAppointmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Appointment updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - validation errors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Appointment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Appointments"],
+        "summary": "Cancel appointment",
+        "description": "Cancel an existing appointment",
+        "operationId": "cancelAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique appointment identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "apt-123"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Appointment cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Appointment cancelled successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Appointment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync": {
+      "post": {
+        "tags": ["Sync"],
+        "summary": "Manual data synchronization",
+        "description": "Manually trigger synchronization of clients and appointments from external API",
+        "operationId": "syncData",
+        "responses": {
+          "200": {
+            "description": "Data synchronization completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sync completed: 25 clients, 48 appointments"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Synchronization failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Client": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique client identifier",
+            "example": "client-123"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name of the client",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Client's email address",
+            "example": "john.doe@email.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Client's phone number",
+            "example": "+1-555-0123"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "description": "Client's date of birth",
+            "example": "1985-06-15",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when client was created",
+            "example": "2025-01-15T10:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when client was last updated",
+            "example": "2025-07-20T14:45:00.000Z"
+          }
+        },
+        "required": ["id", "name", "email", "createdAt", "updatedAt"]
+      },
+      "Appointment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique appointment identifier",
+            "example": "apt-123"
+          },
+          "clientId": {
+            "type": "string",
+            "description": "ID of the client this appointment belongs to",
+            "example": "client-123"
+          },
+          "clientName": {
+            "type": "string",
+            "description": "Name of the client (populated from join)",
+            "example": "John Doe"
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the appointment",
+            "example": "2025-07-25"
+          },
+          "appointmentTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Time of the appointment",
+            "example": "14:30"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Duration of appointment in minutes",
+            "example": 60,
+            "minimum": 15,
+            "maximum": 480
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of appointment",
+            "example": "Consultation",
+            "enum": [
+              "Consultation",
+              "Therapy Session",
+              "Follow-up",
+              "Assessment",
+              "Group Session",
+              "Workshop",
+              "Other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status of the appointment",
+            "example": "scheduled",
+            "enum": ["scheduled", "completed", "cancelled"]
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes about the appointment",
+            "example": "Initial consultation for wellness program",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when appointment was created",
+            "example": "2025-07-20T10:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when appointment was last updated",
+            "example": "2025-07-20T14:45:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "clientId",
+          "appointmentDate",
+          "appointmentTime",
+          "duration",
+          "type",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateAppointmentRequest": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "ID of the client to book appointment for",
+            "example": "client-123"
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Date for the appointment (YYYY-MM-DD)",
+            "example": "2025-07-25"
+          },
+          "appointmentTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Time for the appointment (HH:MM)",
+            "example": "14:30"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Duration in minutes",
+            "example": 60,
+            "minimum": 15,
+            "maximum": 480
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of appointment",
+            "example": "Consultation",
+            "enum": [
+              "Consultation",
+              "Therapy Session",
+              "Follow-up",
+              "Assessment",
+              "Group Session",
+              "Workshop",
+              "Other"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional notes about the appointment",
+            "example": "Patient requested morning slot",
+            "nullable": true
+          }
+        },
+        "required": ["clientId", "appointmentDate", "appointmentTime", "duration", "type"]
+      },
+      "UpdateAppointmentRequest": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "ID of the client (if changing client)",
+            "example": "client-456"
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "New date for the appointment",
+            "example": "2025-07-26"
+          },
+          "appointmentTime": {
+            "type": "string",
+            "format": "time",
+            "description": "New time for the appointment",
+            "example": "15:00"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "New duration in minutes",
+            "example": 90,
+            "minimum": 15,
+            "maximum": 480
+          },
+          "type": {
+            "type": "string",
+            "description": "New type of appointment",
+            "example": "Follow-up",
+            "enum": [
+              "Consultation",
+              "Therapy Session",
+              "Follow-up",
+              "Assessment",
+              "Group Session",
+              "Workshop",
+              "Other"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "description": "Updated notes about the appointment",
+            "example": "Rescheduled due to patient request",
+            "nullable": true
+          }
+        }
+      },
+      "ClientResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Client"
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "ClientsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Client"
+            }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "AppointmentResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Appointment"
+          },
+          "message": {
+            "type": "string",
+            "example": "Appointment created successfully"
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "AppointmentsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Appointment"
+            }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message describing what went wrong",
+            "example": "Validation error: clientId is required"
+          }
+        },
+        "required": ["success", "message"]
+      }
+    }
+  }
+}
