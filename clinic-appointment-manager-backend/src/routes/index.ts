@@ -163,65 +163,96 @@ router.post('/appointments', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/appointments/:id', async (req: Request, res: Response) => {
+
+/**
+ * Update appointment
+ * PUT /api/appointments/:id
+ */
+router.put('/appointments/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates: Partial<CreateAppointmentRequest> = req.body;
+    const appointmentId = req.params.id;
+    const updates: UpdateAppointmentRequest = req.body;
     
-    // Check if appointment exists
-    const existingAppointment = await dataService.getAppointmentById(id);
+    console.log(`📝 Updating appointment ${appointmentId}:`, JSON.stringify(updates, null, 2));
+    
+    // Validate appointment exists
+    const existingAppointment = await dataService.getAppointmentById(appointmentId);
     if (!existingAppointment) {
       return res.status(404).json({
         success: false,
-        message: 'Appointment not found'
+        error: 'Appointment not found'
       });
     }
     
-    // Update via external API
-    const updatedAppointment = await apiWrapper.updateAppointment(id, updates);
+    // Call mock API (for demonstration)
+    try {
+      await apiWrapper.updateAppointment(appointmentId, updates);
+      console.log('✅ Mock API update call completed');
+    } catch (mockError: any) {
+      console.warn('⚠️ Mock API update failed, continuing with database update:', mockError.message);
+    }
     
-    // Update local database
-    await dataService.upsertAppointments([updatedAppointment]);
+    // Update in database
+    await dataService.updateAppointment(appointmentId, updates);
+    
+    // Get updated appointment with client name
+    const updatedAppointment = await dataService.getAppointmentById(appointmentId);
     
     res.json({
       success: true,
       data: updatedAppointment,
       message: 'Appointment updated successfully'
     });
-  } catch (error) {
-    console.error('Error updating appointment:', error);
+    
+  } catch (error: any) {
+    console.error('❌ Error updating appointment:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update appointment'
+      error: error.message || 'Failed to update appointment'
     });
   }
 });
 
-router.delete('/appointments/:id', async (req: Request, res: Response) => {
+/**
+ * Delete appointment  
+ * DELETE /api/appointments/:id
+ */
+router.delete('/appointments/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const appointmentId = req.params.id;
     
-    // Check if appointment exists
-    const existingAppointment = await dataService.getAppointmentById(id);
+    console.log(`🗑️ Deleting appointment ${appointmentId}`);
+    
+    // Validate appointment exists
+    const existingAppointment = await dataService.getAppointmentById(appointmentId);
     if (!existingAppointment) {
       return res.status(404).json({
         success: false,
-        message: 'Appointment not found'
+        error: 'Appointment not found'
       });
     }
     
-    // Cancel via external API
-    await apiWrapper.cancelAppointment(id);
+    // Call mock API (for demonstration)
+    try {
+      await apiWrapper.cancelAppointment(appointmentId);
+      console.log('✅ Mock API cancel call completed');
+    } catch (mockError) {
+      console.warn('⚠️ Mock API cancel failed, continuing with database deletion:', mockError.message);
+    }
+    
+    // Delete from database
+    await dataService.deleteAppointment(appointmentId);
     
     res.json({
       success: true,
-      message: 'Appointment cancelled successfully'
+      message: 'Appointment deleted successfully'
     });
-  } catch (error) {
-    console.error('Error cancelling appointment:', error);
+    
+  } catch (error: any) {
+    console.error('❌ Error deleting appointment:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to cancel appointment'
+      error: error.message || 'Failed to delete appointment'
     });
   }
 });

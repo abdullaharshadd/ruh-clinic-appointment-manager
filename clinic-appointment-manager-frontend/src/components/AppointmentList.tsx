@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
   CalendarDaysIcon,
@@ -17,7 +17,10 @@ import { Appointment } from '../types';
 
 const AppointmentList: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'today'>('all');
+  // Add state to track which appointment is being cancelled
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { 
     data: appointments, 
@@ -32,13 +35,21 @@ const AppointmentList: React.FC = () => {
   const cancelMutation = useMutation(
     (appointmentId: string) => apiService.cancelAppointment(appointmentId),
     {
+      onMutate: (appointmentId) => {
+        // Set which appointment is being cancelled
+        setCancellingAppointmentId(appointmentId);
+      },
       onSuccess: () => {
         queryClient.invalidateQueries('appointments');
         queryClient.invalidateQueries('upcomingAppointments');
+        // Clear the loading state
+        setCancellingAppointmentId(null);
       },
       onError: (error) => {
         console.error('Failed to cancel appointment:', error);
         alert('Failed to cancel appointment. Please try again.');
+        // Clear the loading state on error too
+        setCancellingAppointmentId(null);
       }
     }
   );
@@ -47,6 +58,11 @@ const AppointmentList: React.FC = () => {
     if (window.confirm(`Are you sure you want to cancel the appointment for ${clientName}?`)) {
       cancelMutation.mutate(appointmentId);
     }
+  };
+
+  const handleEditAppointment = (appointmentId: string) => {
+    // Navigate to edit page with appointment ID
+    navigate(`/appointments/${appointmentId}/edit`);
   };
 
   if (isLoading) {
@@ -221,21 +237,18 @@ const AppointmentList: React.FC = () => {
                         <>
                           <button
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-xs font-medium inline-flex items-center"
-                            onClick={() => {
-                              // This would open an edit modal in a real app
-                              alert('Edit functionality would be implemented here');
-                            }}
+                            onClick={() => handleEditAppointment(appointment.id)}
                           >
                             <PencilIcon className="h-3 w-3 mr-1" />
                             Edit
                           </button>
                           <button
                             className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-md text-xs font-medium inline-flex items-center"
-                            onClick={() => handleCancelAppointment(appointment.id.toString(), appointment.clientName || 'Unknown')}
-                            disabled={cancelMutation.isLoading}
+                            onClick={() => handleCancelAppointment(appointment.id, appointment.clientName || 'Unknown')}
+                            disabled={cancellingAppointmentId === appointment.id}
                           >
                             <XMarkIcon className="h-3 w-3 mr-1" />
-                            {cancelMutation.isLoading ? 'Cancelling...' : 'Cancel'}
+                            {cancellingAppointmentId === appointment.id ? 'Cancelling...' : 'Cancel'}
                           </button>
                         </>
                       )}

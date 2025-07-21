@@ -1,5 +1,5 @@
 import pool from '../database/db';
-import { Client, Appointment, MockApiClient, MockApiAppointment, AppointmentWithClient } from '../types/index';
+import { Client, Appointment, MockApiClient, MockApiAppointment, AppointmentWithClient, UpdateAppointmentRequest } from '../types/index';
 import ApiWrapper from './apiWrapper';
 
 class DataService {
@@ -169,7 +169,7 @@ class DataService {
     const validAppointments = appointments.filter((appointment, index) => {
       const hasId = appointment && typeof appointment.id === 'string' && appointment.id.trim() !== '';
       const hasClientId = appointment && typeof appointment.client_id === 'string' && appointment.client_id.trim() !== '';
-      const hasTime = appointment && typeof appointment.appointment_time === 'string' && appointment.appointment_time.trim() !== '';
+      const hasTime = appointment && typeof appointment.time === 'string' && appointment.time.trim() !== '';
       
       const isValid = hasId && hasClientId && hasTime;
       
@@ -177,7 +177,7 @@ class DataService {
         console.warn(`⚠️  Skipping invalid appointment at index ${index}:`, {
           id: appointment?.id,
           client_id: appointment?.client_id,
-          time: appointment?.appointment_time,
+          time: appointment?.time,
           hasId,
           hasClientId,
           hasTime
@@ -202,9 +202,9 @@ class DataService {
         console.log(`📝 Processing appointment: ${appointment.id} for client ${appointment.client_id}`);
         
         // Convert API 'time' field to separate date and time for database
-        const { date, time } = this.parseApiDateTime(appointment.appointment_time);
+        const { date, time } = this.parseApiDateTime(appointment.time);
         
-        console.log(`🕒 Converted time "${appointment.appointment_time}" to date: ${date}, time: ${time}`);
+        console.log(`🕒 Converted time "${appointment.time}" to date: ${date}, time: ${time}`);
         
         const query = `
           INSERT INTO appointments (id, client_id, appointment_date, appointment_time, 
@@ -252,12 +252,12 @@ class DataService {
    * Create appointment locally (typically after creating via API)
    */
   async createAppointment(appointment: MockApiAppointment): Promise<void> {
-    if (!appointment.id || !appointment.client_id || !appointment.appointment_time) {
+    if (!appointment.id || !appointment.client_id || !appointment.time) {
       throw new Error('Invalid appointment data: missing required fields');
     }
 
     // Convert API 'time' field to separate date and time for database
-    const { date, time } = this.parseApiDateTime(appointment.appointment_time);
+    const { date, time } = this.parseApiDateTime(appointment.time);
     
     const query = `
       INSERT INTO appointments (id, client_id, appointment_date, appointment_time, 
@@ -381,16 +381,116 @@ class DataService {
     }
   }
 
-  /**
-   * Format database date and time back to API format
+    /**
+     * Format database date and time back to API format
+     */
+    private formatToApiDateTime(date: string, time: string): string {
+      try {
+        const dateTime = new Date(`${date}T${time}`);
+        return dateTime.toISOString();
+      } catch (error) {
+        console.error('❌ Error formatting datetime:', { date, time }, error);
+        return new Date().toISOString();
+      }
+    }
+
+    /**
+   * Update an existing appointment in database
    */
-  private formatToApiDateTime(date: string, time: string): string {
+  async updateAppointment(appointmentId: string, updates: UpdateAppointmentRequest): Promise<void> {
     try {
-      const dateTime = new Date(`${date}T${time}`);
-      return dateTime.toISOString();
+      console.log(`📝 Updating appointment ${appointmentId} in database:`, updates);
+      
+      // Build the SET clause dynamically based on provided updates
+      const setClauses: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if (updates.clientId) {
+        setClauses.push(`client_id = $${paramIndex++}`);
+        values.push(updates.clientId);
+      }
+
+      if (updates.appointmentDate) {
+        setClauses.push(`appointment_date = $${paramIndex++}`);
+        values.push(updates.appointmentDate);
+      }
+
+      if (updates.appointmentTime) {
+        setClauses.push(`appointment_time = $${paramIndex++}`);
+        values.push(updates.appointmentTime);
+      }
+
+      if (updates.duration !== undefined) {
+        setClauses.push(`duration = $${paramIndex++}`);
+        values.push(updates.duration);
+      }
+
+      if (updates.type !== undefined) {
+        setClauses.push(`type = $${paramIndex++}`);
+        values.push(updates.type);
+      }
+
+      if (updates.status !== undefined) {
+        setClauses.push(`status = $${paramIndex++}`);
+        values.push(updates.status);
+      }
+
+      if (updates.notes !== undefined) {
+        setClauses.push(`notes = $${paramIndex++}`);
+        values.push(updates.notes);
+      }
+
+      // Always update the updated_at timestamp
+      setClauses.push(`updated_at = $${paramIndex++}`);
+      values.push(new Date().toISOString());
+
+      // Add the appointment ID as the last parameter for WHERE clause
+      values.push(appointmentId);
+
+      const query = `
+        UPDATE appointments 
+        SET ${setClauses.join(', ')}
+        WHERE id = $${paramIndex}
+      `;
+
+      console.log(`📝 Executing update query:`, query);
+      console.log(`📝 With values:`, values);
+
+      const result = await pool.query(query, values);
+      
+      if (result.rowCount === 0) {
+        throw new Error('Appointment not found or no changes made');
+      }
+      
+      console.log(`✅ Successfully updated appointment ${appointmentId}`);
+      
     } catch (error) {
-      console.error('❌ Error formatting datetime:', { date, time }, error);
-      return new Date().toISOString();
+      console.error(`❌ Error updating appointment ${appointmentId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an appointment from database
+   */
+  async deleteAppointment(appointmentId: string): Promise<void> {
+    try {
+      const query = `DELETE FROM appointments WHERE id = $1`;
+      
+      console.log(`🗑️ Deleting appointment ${appointmentId} from database`);
+      
+      const result = await pool.query(query, [appointmentId]);
+      
+      if (result.rowCount === 0) {
+        throw new Error('Appointment not found or already deleted');
+      }
+      
+      console.log(`✅ Successfully deleted appointment ${appointmentId}`);
+      
+    } catch (error) {
+      console.error(`❌ Error deleting appointment ${appointmentId}:`, error);
+      throw error;
     }
   }
 }
