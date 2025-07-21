@@ -1,307 +1,297 @@
 import axios, { AxiosInstance } from 'axios';
-import { MockApiClient, MockApiAppointment, CreateAppointmentRequest } from '../types';
+import { MockApiClient, MockApiAppointment, CreateAppointmentRequest } from '../types/index';
 
 class ApiWrapper {
   private client: AxiosInstance;
 
   constructor() {
-    const baseURL = process.env.MOCK_API_URL || 'https://your-mock-server-url.com';
+    const baseURL = process.env.MOCK_API_URL || 'https://your-postman-mock-url.mock.pstmn.io';
+    const apiKey = process.env.POSTMAN_API_KEY;
+    
+    console.log('🔧 API Configuration:');
+    console.log('   - Base URL:', baseURL);
+    console.log('   - API Key:', apiKey ? '***set***' : 'not set');
+    
+    const headers: any = {
+      'Content-Type': 'application/json',
+    };
+
+    if (apiKey) {
+      headers['x-api-key'] = apiKey;
+    }
     
     this.client = axios.create({
       baseURL,
       timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     // Add request interceptor for logging
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log('📤 API Request Details:');
+        console.log(`   Method: ${config.method?.toUpperCase()}`);
+        console.log(`   URL: ${config.baseURL}${config.url}`);
         return config;
       },
       (error) => {
-        console.error('API Request Error:', error);
+        console.error('❌ API Request Error:', error);
         return Promise.reject(error);
       }
     );
 
-    // Add response interceptor for logging and data extraction
+    // Add response interceptor for logging and parsing
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`API Response: ${response.status} ${response.config.url}`);
+        console.log('📥 API Response Details:');
+        console.log(`   Status: ${response.status} ${response.statusText}`);
+        console.log(`   URL: ${response.config.url}`);
+        console.log(`   Data Type:`, typeof response.data);
         
-        // Log the raw response for debugging
-        console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
+        // Handle string responses from Postman mock server
+        if (typeof response.data === 'string') {
+          try {
+            // Try to parse as JSON first
+            response.data = JSON.parse(response.data);
+            console.log('✅ Successfully parsed string response as JSON');
+          } catch (jsonError: any) {
+            // If JSON parsing fails, try to evaluate as JavaScript
+            try {
+              // Convert JavaScript object notation to JSON
+              const jsString = response.data
+                .replace(/'/g, '"')  // Replace single quotes with double quotes
+                .replace(/(\w+):/g, '"$1":')  // Add quotes around property names
+                .replace(/,\s*}/g, '}')  // Remove trailing commas
+                .replace(/,\s*]/g, ']');  // Remove trailing commas in arrays
+              
+              response.data = JSON.parse(jsString);
+              console.log('✅ Successfully converted JS notation to JSON and parsed');
+            } catch (jsError: any) {
+              console.error('❌ Failed to parse response data:', response.data);
+              console.error('JSON Error:', jsonError.message);
+              console.error('JS Error:', jsError.message);
+              throw new Error('Unable to parse response data');
+            }
+          }
+        }
+        
+        console.log(`   Parsed Data Length:`, Array.isArray(response.data) ? response.data.length : 'N/A');
+        console.log(`   Parsed Data Sample:`, JSON.stringify(response.data, null, 2));
         
         return response;
       },
       (error) => {
-        console.error('API Response Error:', error.response?.status, error.message);
-        if (error.response?.data) {
-          console.error('Error Response Data:', error.response.data);
-        }
+        console.error('❌ API Response Error:', error.response?.status, error.message);
         return Promise.reject(error);
       }
     );
   }
 
+  /**
+   * Fetch all clients from the mock API
+   * Handles both JSON and string responses from Postman mock server
+   */
   async fetchClients(): Promise<MockApiClient[]> {
     try {
+      console.log('🔄 Fetching clients from mock API...');
       const response = await this.client.get('/clients');
       
-      // Handle different possible response formats
-      let clientsData = response.data;
-      
-      // Log the raw response for debugging
-      console.log('Raw API Response for clients:', JSON.stringify(clientsData, null, 2));
-      
-      // If response is an array with one element that has a 'body' field (Postman mock format)
-      if (Array.isArray(clientsData) && clientsData.length > 0 && clientsData[0].body) {
-        try {
-          clientsData = JSON.parse(clientsData[0].body);
-          console.log('Parsed clients from body field');
-        } catch (parseError) {
-          console.warn('Failed to parse response body from array, returning empty array:', parseError);
-          return []; // Return empty array instead of throwing
-        }
+      // Data should now be parsed by interceptor
+      if (!Array.isArray(response.data)) {
+        console.error('❌ Expected array but got:', typeof response.data, response.data);
+        throw new Error(`Expected array of clients, got ${typeof response.data}`);
       }
-      // If response is a single object with a 'body' field
-      else if (typeof clientsData === 'object' && !Array.isArray(clientsData) && clientsData.body) {
-        try {
-          clientsData = JSON.parse(clientsData.body);
-          console.log('Parsed clients from single object body field');
-        } catch (parseError) {
-          console.warn('Failed to parse response body from object, returning empty array:', parseError);
-          return []; // Return empty array instead of throwing
-        }
-      }
-      // If it's already an array of clients (direct format)
-      else if (Array.isArray(clientsData)) {
-        // Check if it's already the right format
-        if (clientsData.length > 0 && clientsData[0].id && clientsData[0].name) {
-          console.log('Clients already in correct array format');
-        } else {
-          console.warn('Array does not contain valid client objects, returning empty array');
-          return []; // Return empty array instead of throwing
-        }
-      }
-      
-      // Ensure we have an array
-      if (!Array.isArray(clientsData)) {
-        console.warn('Expected array of clients, got:', typeof clientsData, 'returning empty array');
-        return []; // Return empty array instead of throwing
-      }
-      
-      // Validate each client object and filter out invalid ones
-      const validatedClients = clientsData.filter((client: any) => {
-        if (!client || typeof client !== 'object') {
-          console.warn('Skipping invalid client object (not an object):', client);
-          return false;
+
+      // Validate individual client objects
+      const validClients = response.data.filter((client: any, index: number) => {
+        const isValid = client && 
+                       typeof client.id === 'string' && 
+                       typeof client.name === 'string' &&
+                       typeof client.email === 'string';
+        
+        if (!isValid) {
+          console.warn(`⚠️  Invalid client at index ${index}:`, client);
         }
         
-        if (!client.id || !client.name || !client.email) {
-          console.warn('Skipping client missing required fields (id, name, email):', client);
-          return false;
-        }
-        
-        // Add default values for optional fields
-        if (!client.phone) {
-          client.phone = '';
-        }
-        if (!client.created_at) {
-          client.created_at = new Date().toISOString();
-        }
-        if (!client.updated_at) {
-          client.updated_at = new Date().toISOString();
-        }
-        
-        return true;
+        return isValid;
       });
+
+      console.log(`✅ Fetched ${validClients.length} valid clients out of ${response.data.length} total`);
       
-      console.log(`Successfully parsed ${validatedClients.length} valid clients out of ${clientsData.length} total`);
-      return validatedClients;
-      
+      return validClients;
     } catch (error) {
-      console.error('Error fetching clients, returning empty array:', error);
-      return []; // Return empty array instead of throwing
+      console.error('❌ Error fetching clients:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        throw new Error('Clients endpoint not found. Please check your Postman mock server setup.');
+      }
+      
+      throw new Error('Failed to fetch clients from external API');
     }
   }
 
+  /**
+   * Fetch all appointments from the mock API
+   * Handles both JSON and string responses from Postman mock server
+   */
   async fetchAppointments(): Promise<MockApiAppointment[]> {
     try {
+      console.log('🔄 Fetching appointments from mock API...');
       const response = await this.client.get('/appointments');
       
-      // Handle different possible response formats
-      let appointmentsData = response.data;
-      
-      // Log the raw response for debugging
-      console.log('Raw API Response for appointments:', JSON.stringify(appointmentsData, null, 2));
-      
-      // If response is an array with one element that has a 'body' field (Postman mock format)
-      if (Array.isArray(appointmentsData) && appointmentsData.length > 0 && appointmentsData[0].body) {
-        try {
-          appointmentsData = JSON.parse(appointmentsData[0].body);
-          console.log('Parsed appointments from body field');
-        } catch (parseError) {
-          console.warn('Failed to parse response body from array, returning empty array:', parseError);
-          return []; // Return empty array instead of throwing
-        }
+      // Data should now be parsed by interceptor
+      if (!Array.isArray(response.data)) {
+        console.error('❌ Expected array but got:', typeof response.data, response.data);
+        throw new Error(`Expected array of appointments, got ${typeof response.data}`);
       }
-      // If response is a single object with a 'body' field
-      else if (typeof appointmentsData === 'object' && !Array.isArray(appointmentsData) && appointmentsData.body) {
-        try {
-          appointmentsData = JSON.parse(appointmentsData.body);
-          console.log('Parsed appointments from single object body field');
-        } catch (parseError) {
-          console.warn('Failed to parse response body from object, returning empty array:', parseError);
-          return []; // Return empty array instead of throwing
-        }
-      }
-      // If it's already an array of appointments (direct format)
-      else if (Array.isArray(appointmentsData)) {
-        // Check if it's already the right format
-        if (appointmentsData.length > 0 && appointmentsData[0].id && appointmentsData[0].client_id) {
-          console.log('Appointments already in correct array format');
-        } else {
-          console.warn('Array does not contain valid appointment objects, returning empty array');
-          return []; // Return empty array instead of throwing
-        }
-      }
-      
-      // Ensure we have an array
-      if (!Array.isArray(appointmentsData)) {
-        console.warn('Expected array of appointments, got:', typeof appointmentsData, 'returning empty array');
-        return []; // Return empty array instead of throwing
-      }
-      
-      // Validate each appointment object and filter out invalid ones
-      const validatedAppointments = appointmentsData.filter((appointment: any) => {
-        if (!appointment || typeof appointment !== 'object') {
-          console.warn('Skipping invalid appointment object (not an object):', appointment);
-          return false;
+
+      // Validate individual appointment objects
+      const validAppointments = response.data.filter((appointment: any, index: number) => {
+        const isValid = appointment && 
+                       typeof appointment.id === 'string' && 
+                       typeof appointment.client_id === 'string' &&
+                       typeof appointment.time === 'string';
+        
+        if (!isValid) {
+          console.warn(`⚠️  Invalid appointment at index ${index}:`, appointment);
         }
         
-        if (!appointment.id || !appointment.client_id) {
-          console.warn('Skipping appointment missing required fields (id, client_id):', appointment);
-          return false;
-        }
-        
-        // Add default values for missing fields and handle different time formats
-        try {
-          if (!appointment.appointment_date && appointment.time) {
-            // Extract date from time field if needed
-            appointment.appointment_date = appointment.time.split('T')[0];
-          }
-          if (!appointment.appointment_time && appointment.time) {
-            // Extract time from time field if needed
-            const timeObj = new Date(appointment.time);
-            appointment.appointment_time = timeObj.toTimeString().slice(0, 5);
-          }
-          if (!appointment.duration) {
-            appointment.duration = 60; // Default 60 minutes
-          }
-          if (!appointment.type) {
-            appointment.type = 'Consultation'; // Default type
-          }
-          if (!appointment.status) {
-            appointment.status = 'scheduled'; // Default status
-          }
-          if (!appointment.created_at) {
-            appointment.created_at = new Date().toISOString();
-          }
-          if (!appointment.updated_at) {
-            appointment.updated_at = new Date().toISOString();
-          }
-          
-          return true;
-        } catch (timeParsingError) {
-          console.warn('Skipping appointment due to time parsing error:', appointment, timeParsingError);
-          return false;
-        }
+        return isValid;
       });
+
+      console.log(`✅ Fetched ${validAppointments.length} valid appointments out of ${response.data.length} total`);
       
-      console.log(`Successfully parsed ${validatedAppointments.length} valid appointments out of ${appointmentsData.length} total`);
-      return validatedAppointments;
-      
+      return validAppointments;
     } catch (error) {
-      console.error('Error fetching appointments, returning empty array:', error);
-      return []; // Return empty array instead of throwing
+      console.error('❌ Error fetching appointments:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        throw new Error('Appointments endpoint not found. Please check your Postman mock server setup.');
+      }
+      
+      throw new Error('Failed to fetch appointments from external API');
     }
   }
 
+  /**
+   * Create a new appointment via the mock API
+   */
   async createAppointment(appointmentData: CreateAppointmentRequest): Promise<MockApiAppointment> {
     try {
-      const response = await this.client.post('/appointments', {
+      const time = this.formatDateTime(appointmentData.appointmentDate, appointmentData.appointmentTime);
+      
+      const payload = {
         client_id: appointmentData.clientId,
-        appointment_date: appointmentData.appointmentDate,
-        appointment_time: appointmentData.appointmentTime,
+        time: time,
         duration: appointmentData.duration,
         type: appointmentData.type,
         notes: appointmentData.notes,
-      });
+      };
+
+      console.log('📤 Creating appointment with payload:', JSON.stringify(payload, null, 2));
+      const response = await this.client.post('/appointments', payload);
+      console.log('✅ Appointment created:', response.data);
       
-      let createdAppointment = response.data;
-      
-      // Handle Postman mock server response format
-      if (createdAppointment.length > 0 && createdAppointment[0].body) {
-        try {
-          createdAppointment = JSON.parse(createdAppointment[0].body);
-        } catch (parseError) {
-          console.error('Failed to parse create response body:', parseError);
-          throw new Error('Invalid JSON in create response body');
-        }
-      }
-            
-      // Validate the created appointment
-      if (!createdAppointment || !createdAppointment.id) {
-        throw new Error('Invalid appointment creation response');
-      }
-      
-      return createdAppointment;
+      return response.data;
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      console.error('❌ Error creating appointment:', error);
       throw new Error('Failed to create appointment via external API');
     }
   }
 
+  /**
+   * Update an existing appointment
+   */
   async updateAppointment(appointmentId: string, updates: Partial<CreateAppointmentRequest>): Promise<MockApiAppointment> {
     try {
-      const response = await this.client.put(`/appointments/${appointmentId}`, {
+      const payload: any = {
         client_id: updates.clientId,
-        appointment_date: updates.appointmentDate,
-        appointment_time: updates.appointmentTime,
-        duration: updates.duration,
-        type: updates.type,
-        notes: updates.notes,
-      });
+      };
       
-      let updatedAppointment = response.data;
-      
-      // Handle Postman mock server response format
-      if (typeof updatedAppointment === 'object' && updatedAppointment.body) {
-        try {
-          updatedAppointment = JSON.parse(updatedAppointment.body);
-        } catch (parseError) {
-          console.error('Failed to parse update response body:', parseError);
-          throw new Error('Invalid JSON in update response body');
-        }
+      if (updates.appointmentDate && updates.appointmentTime) {
+        payload.time = this.formatDateTime(updates.appointmentDate, updates.appointmentTime);
       }
       
-      return updatedAppointment;
+      if (updates.duration !== undefined) payload.duration = updates.duration;
+      if (updates.type !== undefined) payload.type = updates.type;
+      if (updates.notes !== undefined) payload.notes = updates.notes;
+
+      console.log('📤 Updating appointment:', appointmentId, JSON.stringify(payload, null, 2));
+      const response = await this.client.put(`/appointments/${appointmentId}`, payload);
+      console.log('✅ Appointment updated:', response.data);
+      
+      return response.data;
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      console.error('❌ Error updating appointment:', error);
       throw new Error('Failed to update appointment via external API');
     }
   }
 
+  /**
+   * Cancel/delete an appointment
+   */
   async cancelAppointment(appointmentId: string): Promise<void> {
     try {
+      console.log('🗑️ Cancelling appointment:', appointmentId);
       await this.client.delete(`/appointments/${appointmentId}`);
+      console.log('✅ Appointment cancelled successfully');
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+      console.error('❌ Error cancelling appointment:', error);
       throw new Error('Failed to cancel appointment via external API');
+    }
+  }
+
+  /**
+   * Test connectivity to the mock API
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      console.log('🔍 Testing API connection...');
+      const response = await this.client.get('/clients');
+      console.log(`✅ Connection successful! Status: ${response.status}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Connection test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Helper method to format date and time into ISO string
+   */
+  private formatDateTime(date: string, time: string): string {
+    try {
+      let formattedTime = time;
+      if (time.split(':').length === 2) {
+        formattedTime = `${time}:00`;
+      }
+      
+      const dateTime = new Date(`${date}T${formattedTime}`);
+      const isoString = dateTime.toISOString();
+      console.log(`🕒 Formatted "${date} ${time}" to "${isoString}"`);
+      return isoString;
+    } catch (error) {
+      console.error('❌ Error formatting datetime:', error);
+      return new Date().toISOString();
+    }
+  }
+
+  /**
+   * Helper method to parse ISO datetime back to separate date and time
+   */
+  static parseDateTime(isoString: string): { date: string; time: string } {
+    try {
+      const dateTime = new Date(isoString);
+      const date = dateTime.toISOString().split('T')[0];
+      const time = dateTime.toTimeString().split(' ')[0];
+      return { date, time };
+    } catch (error) {
+      console.error('❌ Error parsing datetime:', error);
+      const now = new Date();
+      return {
+        date: now.toISOString().split('T')[0],
+        time: now.toTimeString().split(' ')[0]
+      };
     }
   }
 }

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Wellness Platform - A comprehensive healthcare clinic management system" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Tailwind CSS CDN for development -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Tailwind configuration -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#eff6ff',
+                100: '#dbeafe',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+              },
+              gray: {
+                50: '#f9fafb',
+                100: '#f3f4f6',
+                500: '#6b7280',
+                600: '#4b5563',
+                700: '#374151',
+                800: '#1f2937',
+                900: '#111827',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            spacing: {
+              '18': '4.5rem',
+              '88': '22rem',
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <title>Wellness Platform - Healthcare Management</title>
+    
+    <style>
+      /* Loading spinner for initial app load */
+      .app-loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: 'Inter', sans-serif;
+      }
+      
+      .spinner {
+        border: 4px solid #f3f4f6;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Ensure body uses Inter font */
+      body {
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <!-- App loading fallback -->
+    <div id="app-loading" class="app-loading">
+      <div class="text-center">
+        <div class="spinner mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Wellness Platform</h2>
+        <p class="text-gray-600">Loading your healthcare management system...</p>
+      </div>
+    </div>
+    
+    <!-- Main React app container -->
+    <div id="root"></div>
+    
+    <!-- Hide loading screen once React app loads -->
+    <script>
+      // Hide loading screen once React app mounts
+      const observer = new MutationObserver(function(mutations) {
+        const root = document.getElementById('root');
+        if (root && root.children.length > 0) {
+          const loading = document.getElementById('app-loading');
+          if (loading) {
+            loading.style.display = 'none';
+          }
+          observer.disconnect();
+        }
+      });
+      
+      observer.observe(document.getElementById('root'), {
+        childList: true,
+        subtree: true
+      });
+      
+      // Fallback: hide loading after 10 seconds
+      setTimeout(() => {
+        const loading = document.getElementById('app-loading');
+        if (loading) {
+          loading.style.display = 'none';
+        }
+      }, 10000);
+    </script>
+  </body>
+</html>
