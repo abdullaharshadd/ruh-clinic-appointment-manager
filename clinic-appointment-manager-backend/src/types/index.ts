@@ -22,6 +22,10 @@ export interface Appointment {
   updatedAt: string;
 }
 
+export interface AppointmentWithClient extends Appointment {
+  clientName: string;
+}
+
 export interface CreateAppointmentRequest {
   clientId: string;
   appointmentDate: string;

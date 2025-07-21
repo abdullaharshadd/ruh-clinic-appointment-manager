@@ -231,7 +231,7 @@ const AppointmentList: React.FC = () => {
                           </button>
                           <button
                             className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-md text-xs font-medium inline-flex items-center"
-                            onClick={() => handleCancelAppointment(appointment.id, appointment.clientName || 'Unknown')}
+                            onClick={() => handleCancelAppointment(appointment.id.toString(), appointment.clientName || 'Unknown')}
                             disabled={cancelMutation.isLoading}
                           >
                             <XMarkIcon className="h-3 w-3 mr-1" />

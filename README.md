@@ -437,8 +437,67 @@ If given more time, I would implement:
 
 ## 📞 Contact
 
-For any questions about this implementation, please reach out to omar@ruhcare.com
+For any questions about this implementation, please reach out to abdullah.arshad.314@gmail.com
 
 ---
+
+## ⏰ Time Breakdown
+
+**Total Time Spent: 7.5 hours**
+
+- **Backend Development:** 3.5 hours
+  - Express server setup with TypeScript
+  - PostgreSQL database design and schema creation
+  - External API wrapper implementation
+  - Data synchronization logic and error handling
+
+- **Frontend Development:** 3.5 hours
+  - React application structure and routing
+  - Component development (Dashboard, ClientList, AppointmentList, CreateAppointment)
+  - API integration and state management
+  - Form handling, validation, and responsive UI
+
+- **Testing & Documentation:** 0.5 hours
+  - Manual testing of all features
+  - README documentation and code cleanup
+
+## 🔮 Incomplete Items & Future Approach
+
+If given more time, I would implement:
+
+### 1. **Database Migrations**
+**Current:** Direct SQL scripts in `init-db.sql`  
+**Improvement:** Use proper migration system (e.g., Knex.js migrations)
+- Version-controlled schema changes
+- Rollback capabilities
+- Environment-specific migrations
+- Automated deployment migrations
+
+**Reasoning:** I wrote direct SQL due to the application being small and for quick setup, but migrations would be essential for production.
+
+### 2. **Architectural Improvements**
+**Current:** Monolithic route handlers  
+**Improvement:** Proper separation of concerns
+- **Controllers:** Handle HTTP requests/responses only
+- **Services:** Business logic layer separated from routes
+- **Repositories:** Data access layer abstraction
+- **Middleware:** Centralized authentication, validation, logging
+
+### 3. **Testing Suite**
+**Missing:** Comprehensive test coverage  
+**Would Add:**
+- **Unit Tests:** Jest for individual functions/components
+- **Integration Tests:** API endpoint testing with supertest
+- **E2E Tests:** Cypress for full user workflows
+- **Database Tests:** In-memory database for
+
+## Stack Used:
+MERN with typescript
+
+## Assumptions made
+The mock api will always return a unique id when we book an appointment else we will need to handle ids on our end.
+
+## (Optional) Deployment or demo link
+None
 
 **Note:** This implementation demonstrates production-ready code practices including proper error handling, TypeScript usage, responsive design, and comprehensive documentation. The system is designed to be scalable and maintainable for a real-world healthcare environment.

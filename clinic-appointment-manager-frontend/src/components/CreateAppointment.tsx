@@ -82,7 +82,7 @@ const CreateAppointment: React.FC = () => {
     return <ErrorMessage message="Failed to load clients" />;
   }
 
-  const selectedClient = clients?.find(client => client.id === selectedClientId);
+  const selectedClient = clients?.find(client => client.id.toString() === selectedClientId);
 
   return (
     <div className="max-w-3xl mx-auto">

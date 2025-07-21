@@ -169,7 +169,7 @@ class DataService {
     const validAppointments = appointments.filter((appointment, index) => {
       const hasId = appointment && typeof appointment.id === 'string' && appointment.id.trim() !== '';
       const hasClientId = appointment && typeof appointment.client_id === 'string' && appointment.client_id.trim() !== '';
-      const hasTime = appointment && typeof appointment.time === 'string' && appointment.time.trim() !== '';
+      const hasTime = appointment && typeof appointment.appointment_time === 'string' && appointment.appointment_time.trim() !== '';
       
       const isValid = hasId && hasClientId && hasTime;
       
@@ -177,7 +177,7 @@ class DataService {
         console.warn(`⚠️  Skipping invalid appointment at index ${index}:`, {
           id: appointment?.id,
           client_id: appointment?.client_id,
-          time: appointment?.time,
+          time: appointment?.appointment_time,
           hasId,
           hasClientId,
           hasTime
@@ -202,9 +202,9 @@ class DataService {
         console.log(`📝 Processing appointment: ${appointment.id} for client ${appointment.client_id}`);
         
         // Convert API 'time' field to separate date and time for database
-        const { date, time } = this.parseApiDateTime(appointment.time);
+        const { date, time } = this.parseApiDateTime(appointment.appointment_time);
         
-        console.log(`🕒 Converted time "${appointment.time}" to date: ${date}, time: ${time}`);
+        console.log(`🕒 Converted time "${appointment.appointment_time}" to date: ${date}, time: ${time}`);
         
         const query = `
           INSERT INTO appointments (id, client_id, appointment_date, appointment_time, 
@@ -252,12 +252,12 @@ class DataService {
    * Create appointment locally (typically after creating via API)
    */
   async createAppointment(appointment: MockApiAppointment): Promise<void> {
-    if (!appointment.id || !appointment.client_id || !appointment.time) {
+    if (!appointment.id || !appointment.client_id || !appointment.appointment_time) {
       throw new Error('Invalid appointment data: missing required fields');
     }
 
     // Convert API 'time' field to separate date and time for database
-    const { date, time } = this.parseApiDateTime(appointment.time);
+    const { date, time } = this.parseApiDateTime(appointment.appointment_time);
     
     const query = `
       INSERT INTO appointments (id, client_id, appointment_date, appointment_time, 
